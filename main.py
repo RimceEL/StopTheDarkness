@@ -1,25 +1,16 @@
-"""main.py - cửa sổ game: vẽ giao diện, nhận chuột/phím, gọi luật chơi trong world.py.
 
-Cấu trúc:
-  - Vài hàm vẽ dùng chung: font, txt, paragraph, box, fmt
-  - class Game: menu(), game() và các hàm vẽ từng khung của màn chơi
-  - run(): vòng lặp chính, mỗi vòng = 1 khung hình
-"""
 import os
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'          # tắt dòng chào của pygame trong terminal
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'         
 import pygame as pg
 from world import World, KINDS, UPGRADES, N, RESOURCE_NAMES
 from assets import (BG, PANEL, PANEL2, LINE, WHITE, MUTED, MINT, RED, COLORS,
                     tile_art, resource_icon)
 
-WIDTH, HEIGHT = 1280, 880                               # cỡ cửa sổ (cố định)
-BOARD_X, BOARD_Y, CELL = 40, 204, 52                    # góc trên trái của bản đồ và cỡ mỗi ô (pixel)
-FONTS = {}                                              # kho font đã tạo: {(cỡ, đậm): font}
+WIDTH, HEIGHT = 1280, 880                               
+BOARD_X, BOARD_Y, CELL = 40, 204, 52                    
+FONTS = {}                                            
 
 
-# =====================================================================
-#  HÀM VẼ DÙNG CHUNG
-# =====================================================================
 def font(size, bold=False):
     """Lấy font theo cỡ chữ. Mỗi font chỉ tạo 1 lần rồi cất vào FONTS (tạo font mỗi khung hình sẽ rất chậm)."""
     if (size, bold) not in FONTS:
@@ -40,15 +31,15 @@ def txt(surface, value, x, y, size=18, color=WHITE, bold=False, align='left'):
 
 def paragraph(s, value, x, y, width, size=17, color=MUTED, spacing=5):
     """Viết đoạn văn, tự xuống dòng khi vượt quá `width` pixel. Trả về y của dòng kế tiếp."""
-    row = ''                                            # dòng đang ghép
+    row = ''                                            
     for word in value.split():
         if row != '' and font(size).size(row + ' ' + word)[0] > width:
-            txt(s, row, x, y, size, color)              # thêm chữ nữa là tràn -> viết dòng hiện tại ra
+            txt(s, row, x, y, size, color)              
             y += size + spacing
-            row = word                                  # chữ này mở đầu dòng mới
+            row = word                                
         else:
             row = (row + ' ' + word).strip()
-    txt(s, row, x, y, size, color)                      # dòng cuối
+    txt(s, row, x, y, size, color)                     
     return y + size + spacing
 
 
@@ -63,38 +54,36 @@ def fmt(n):
     """Số đẹp để hiện: 12 -> '12', 2.5 -> '2.5', 12000 -> '12.0k'."""
     if n >= 10000:
         return f'{n / 1000:.1f}k'
-    if abs(n - round(n)) < .05:                         # gần số nguyên thì bỏ phần lẻ
+    if abs(n - round(n)) < .05:                        
         return str(int(n))
     return f'{n:.1f}'
 
 
-# =====================================================================
-#  GAME
-# =====================================================================
+
 class Game:
     def __init__(self):
         pg.init()
-        self.s = pg.display.set_mode((WIDTH, HEIGHT))   # self.s = màn hình, mọi thứ vẽ lên đây
+        self.s = pg.display.set_mode((WIDTH, HEIGHT))   
         pg.display.set_caption('Stop the Darkness · Ánh sáng cuối cùng')
         pg.display.set_icon(tile_art('light', 2, 64))
         self.clock = pg.time.Clock()
         self.running = True
-        self.scene = 'menu'           # đang ở màn nào: 'menu' hoặc 'game'
+        self.scene = 'menu'           
         self.mouse = (0, 0)           # vị trí chuột khung hình này
         self.click = False            # khung hình này có bấm chuột trái không
-        self.world = World()          # bản đồ hiện tại (menu xem trước, game chơi luôn bản này)
+        self.world = World()          # bản đồ hiện tại
         self.selected = 0             # chỉ số ô đang chọn
         self.hover = None             # chỉ số ô chuột đang trỏ vào (None nếu ngoài bản đồ)
         self.dt = 0                   # số giây của khung hình vừa rồi
         self.message = ''             # thông báo sau khi bấm nâng cấp
-        self.win_seen = False         # đã đóng bảng chiến thắng chưa (để còn chơi tiếp)
+        self.win_seen = False        
 
-    # ---------- thành phần dùng chung ----------
+    # thành phần dùng chung
     def button(self, label, r, primary=False):
         """Vẽ nút r = (x, y, rộng, cao). Trả về True nếu khung hình này nút vừa được bấm.
         primary=True: nút nổi bật (nền xanh)."""
         r = pg.Rect(r)
-        hot = r.collidepoint(self.mouse)                # chuột đang đứng trên nút?
+        hot = r.collidepoint(self.mouse)                
         if primary:
             if hot:
                 color = '#b0edbf'
@@ -141,8 +130,8 @@ class Game:
         box(self.s, (28, 192, 648, 648), '#152b2d', LINE, 22)
         for i in range(N * N):
             k = KINDS[self.world.tiles[i]]
-            x = BOARD_X + i % N * CELL                  # i % N = cột
-            y = BOARD_Y + i // N * CELL                 # i // N = hàng
+            x = BOARD_X + i % N * CELL                
+            y = BOARD_Y + i // N * CELL                 
             is_dark = i in self.world.dark
             self.s.blit(tile_art(k.art, k.level, CELL - 4, i % 3, is_dark), (x + 2, y + 2))
 
@@ -159,7 +148,7 @@ class Game:
         self.header()
         self.board()
 
-        for x, y in [(718, 127), (1183, 151), (1234, 773), (1150, 824), (695, 842)]:    # vài chấm trang trí
+        for x, y in [(718, 127), (1183, 151), (1234, 773), (1150, 824), (695, 842)]:    
             pg.draw.circle(self.s, '#627f71', (x, y), 2)
 
         box(self.s, (708, 185, 532, 656), PANEL, LINE, 24)
@@ -168,7 +157,7 @@ class Game:
         paragraph(self.s, 'Xây làng. Kết nối tài nguyên. Đánh thức phép thuật trước khi bóng tối nuốt chửng vùng đất của bạn.',
                   744, 395, 444, 20, WHITE, 7)
 
-        # 2 dòng giới thiệu, mỗi dòng gồm: ảnh ô + tiêu đề + mô tả
+       
         for y, art, title, desc in [(511, 'village', 'Phát triển từng ô', 'Các ô kề nhau tăng sức mạnh cho nhau.'),
                                     (571, 'light', 'Chạy đua với bóng tối', 'Hai con đường: phép thuật hoặc công nghệ.')]:
             box(self.s, (744, y, 44, 44), PANEL2, LINE, 8)
@@ -188,7 +177,7 @@ class Game:
         txt(self.s, f'BẢN ĐỒ #{self.world.seed}  ·  STANDARD  ·  12 × 12', 744, 773, 12, MUTED, True)
         txt(self.s, 'Cơ chế tham khảo: Stop the Darkness / Florian van Strien', 40, 853, 13, MUTED)
 
-    # ---------- màn chơi: các khung thông tin ----------
+    # màn chơi: các khung thông tin
     def resources(self):
         """4 ô tài nguyên ở trên cùng: số lượng hiện có và sản lượng mỗi phút."""
         rates = self.world.rates()
@@ -330,7 +319,7 @@ class Game:
         """Nâng cấp ô đang chọn. World trả về câu thông báo (thành công hoặc lý do thất bại)."""
         self.message = self.world.upgrade(self.selected)
 
-    # ---------- bảng thắng / thua ----------
+    # bảng thắng / thua 
     def popup(self):
         """Có đang phải hiện bảng thắng/thua không? (thua, hoặc vừa thắng mà chưa bấm đóng)"""
         return self.world.lost or (self.world.won != '' and not self.win_seen)
@@ -338,7 +327,7 @@ class Game:
     def result_popup(self):
         """Vẽ bảng thắng/thua đè lên màn chơi."""
         w = self.world
-        shade = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)     # lớp phủ tối trong suốt
+        shade = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)   
         shade.fill((5, 10, 14, 200))
         self.s.blit(shade, (0, 0))
         box(self.s, (320, 260, 640, 330), PANEL, LINE, 24)
@@ -359,7 +348,7 @@ class Game:
             if self.button('Về menu', (360, 500, 560, 48), True):
                 self.scene = 'menu'
 
-    # ---------- màn chơi ----------
+    # màn chơi
     def game(self):
         """Một khung hình của màn chơi: cập nhật thế giới, rồi vẽ."""
         popup = self.popup()                  # chốt trạng thái bảng thắng/thua ngay đầu khung hình
@@ -383,14 +372,12 @@ class Game:
         txt(self.s, f'#{self.world.seed}  ·  {N * N} ô', 40, 853, 13, MUTED)
 
         if popup:
-            self.click = real_click           # trả lại cú bấm thật để các nút trên bảng dùng
+            self.click = real_click           
             self.result_popup()
 
-    # ---------- vòng lặp chính ----------
+    #vòng lặp chính
     def run(self):
         while self.running:
-            # tick(120): giới hạn tối đa 120 khung/giây và trả về số mili-giây của khung vừa rồi
-            # min(..., .1): nếu cửa sổ bị đứng hình lâu thì không để game "nhảy cóc" quá 0.1 giây
             self.dt = min(self.clock.tick(120) / 1000, .1)
             self.mouse = pg.mouse.get_pos()
             self.click = False
@@ -403,15 +390,15 @@ class Game:
                     self.click = True
                 elif e.type == pg.KEYDOWN and (e.key == pg.K_u or e.key == pg.K_RETURN):
                     if self.scene == 'game' and not self.popup():
-                        self.do_upgrade()                    # phím U hoặc Enter = nâng cấp ô đang chọn
+                        self.do_upgrade()                    
 
             self.s.fill(BG)                                  # xoá màn hình rồi vẽ lại từ đầu
             if self.scene == 'menu':
                 self.menu()
             else:
                 self.game()
-            pg.draw.circle(self.s, '#f5f8f6', self.mouse, 7)  # con trỏ chuột tự vẽ
-            pg.display.flip()                                # đưa tranh vừa vẽ lên màn hình
+            pg.draw.circle(self.s, '#f5f8f6', self.mouse, 7)  
+            pg.display.flip()                                
         pg.quit()
 
 
