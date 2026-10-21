@@ -1,67 +1,48 @@
-"""assets.py - toàn bộ hình ảnh của game.
-
-Không cần file ảnh bên ngoài: mọi thứ được vẽ bằng code (pygame.draw).
-Cách dùng trong main:
-    from assets import tile_art, resource_icon
-    ảnh = tile_art('village', level=1, size=48)      # trả về pg.Surface (một tấm ảnh)
-    resource_icon(màn_hình, 0, x, y)                 # 0 gỗ, 1 đá, 2 phép thuật, 3 công nghệ
-"""
 import math
 import pygame as pg
 
-# ---------- Bảng màu (main.py import lại từ đây) ----------
-BG = '#0b141c'            # nền cửa sổ
+BG = '#0b141c'           
 PANEL = '#14232c'         # nền khung
 PANEL2 = '#1b3038'        # nền khung phụ / nút thường
 LINE = '#29424a'          # đường viền
 WHITE = '#e5efe9'
-MUTED = '#91a7ad'         # chữ phụ (xám)
-MINT = '#9ee5b0'          # màu nhấn chính (xanh bạc hà)
+MUTED = '#91a7ad'        
+MINT = '#9ee5b0'          
 GOLD = '#edc581'
 PURPLE = '#c1a1ed'
 BLUE = '#82c9e1'
 RED = '#ed9c9c'
 COLORS = [MINT, GOLD, PURPLE, BLUE]      # màu của 4 tài nguyên: gỗ, đá, phép thuật, công nghệ
 
-BASE = 52                                # mọi ô được vẽ ở cỡ 52x52 rồi mới co/giãn về cỡ cần dùng
+BASE = 52                              
 
 
-# =====================================================================
-#  1. ICON TÀI NGUYÊN
-# =====================================================================
+
 def resource_icon(s, kind, x, y, size=22):
-    """Vẽ icon tài nguyên `kind` (0..3) lên bề mặt `s`, tâm icon tại (x, y)."""
     c = COLORS[kind]
     x = int(x)
     y = int(y)
-    h = size // 2                        # nửa kích thước, dùng để tính toạ độ các điểm
-
-    if kind == 0:                        # gỗ: khúc gỗ + mặt cắt tròn
+    h = size // 2                       
+    if kind == 0:                      
         pg.draw.line(s, c, (x - size // 3, y + size // 4), (x + size // 3, y - size // 4), h)
         pg.draw.circle(s, '#526d56', (x + size // 3, y - size // 4), size // 4)
         pg.draw.circle(s, c, (x + size // 3, y - size // 4), size // 4, 2)
-    elif kind == 1:                      # đá: khối đá 5 cạnh có vết nứt
+    elif kind == 1:                     
         pg.draw.polygon(s, c, [(x - h, y + size // 3), (x - size // 3, y - size // 3),
                                (x + size // 4, y - h), (x + h, y + size // 4), (x, y + h)])
         pg.draw.line(s, '#a1865d', (x - size // 3, y - size // 3), (x, y), 2)
-    elif kind == 2:                      # phép thuật: viên pha lê hình thoi
+    elif kind == 2:                      
         pg.draw.polygon(s, c, [(x, y - h), (x + size // 3, y), (x, y + h), (x - size // 3, y)])
         pg.draw.line(s, WHITE, (x, y - size // 3), (x + size // 7, y), 1)
-    else:                                # công nghệ: bánh răng đơn giản (vòng tròn + 4 răng)
+    else:                              
         pg.draw.circle(s, c, (x, y), h, 2)
-        for dx, dy in ((0, -1), (0, 1), (-1, 0), (1, 0)):                # 4 hướng: lên, xuống, trái, phải
+        for dx, dy in ((0, -1), (0, 1), (-1, 0), (1, 0)):                
             pg.draw.line(s, c, (x + dx * size // 3, y + dy * size // 3),
                          (x + dx * (h + 3), y + dy * (h + 3)), 3)
         pg.draw.circle(s, c, (x, y), 3)
 
 
-# =====================================================================
-#  2. ẢNH Ô ĐẤT
-#  Mỗi nhóm ô có 1 hàm vẽ riêng. Tất cả vẽ trên bề mặt 52x52 (toạ độ 0..51).
-#  Mọi hàm vẽ đều nhận (s, art, level, variant) để gọi chung được; hàm nào không cần thì bỏ qua.
-# =====================================================================
 def tree(s, x, y, scale=1.0):
-    """Một cái cây: thân + 3 tầng tán lá (tối -> sáng)."""
     pg.draw.rect(s, '#9a8158', (x - 1, y, 3, 13))
     pg.draw.circle(s, '#193b32', (x + 2, y + 2), round(9 * scale))
     pg.draw.circle(s, '#4c8760', (x, y - 3), round(9 * scale))
@@ -69,7 +50,6 @@ def tree(s, x, y, scale=1.0):
 
 
 def house(s, x, y, wall='#d6c9a2', roof='#b88869', h=12):
-    """Một ngôi nhà nhỏ, (x, y) là góc trên trái của tường, h là chiều cao tường."""
     pg.draw.rect(s, '#20352e', (x + 2, y + 3, 15, h + 2), border_radius=2)   # bóng đổ
     pg.draw.rect(s, wall, (x, y, 14, h), border_radius=2)                    # tường
     pg.draw.polygon(s, roof, [(x - 2, y), (x + 7, y - 8), (x + 16, y)])      # mái
@@ -78,7 +58,6 @@ def house(s, x, y, wall='#d6c9a2', roof='#b88869', h=12):
 
 
 def draw_water(s, art, level, variant):
-    """Mặt hồ: các đường sóng. variant làm sóng mỗi ô lệch một chút."""
     for j in range(4):
         off = (variant + j) % 3 * 3
         pg.draw.lines(s, '#508087', False, [(5 + off, 9 + j * 11), (13 + off, 7 + j * 11), (22 + off, 9 + j * 11)])
@@ -86,7 +65,6 @@ def draw_water(s, art, level, variant):
 
 
 def draw_forest(s, art, level, variant):
-    """Rừng: rừng non (cấp 0) chỉ có 1 cây nhỏ, còn lại 3 cây."""
     if level == 0:
         tree(s, 24, 30, .5)
         return
@@ -105,7 +83,6 @@ def draw_mushroom(s, art, level, variant):
 
 
 def draw_rock(s, art, level, variant):
-    """Mỏ đá: 3 tảng đá, mỗi tảng 2 mảng (sáng + tối). Làng khai mỏ ('mining') có thêm 1 ngôi nhà."""
     for x, y in [(14, 32), (34, 35), (26, 20)]:
         pg.draw.polygon(s, '#a0b1aa', [(x - 9, y + 7), (x - 7, y - 4), (x, y - 9), (x + 9, y), (x + 7, y + 9)])
         pg.draw.polygon(s, '#6f8784', [(x, y - 9), (x + 9, y), (x + 7, y + 9), (x, y + 6)])   # mặt tối
@@ -114,7 +91,6 @@ def draw_rock(s, art, level, variant):
 
 
 def draw_circle(s, art, level, variant):
-    """Vòng đá: 6 cột đá xếp quanh. Cấp 2 thì phát sáng màu MINT."""
     glow = MINT if level >= 2 else '#718c87'
     pg.draw.ellipse(s, '#203532', (8, 22, 37, 25))
     if level >= 2:
@@ -129,7 +105,6 @@ def draw_circle(s, art, level, variant):
 
 
 def draw_tower(s, art, level, variant):
-    """Tháp ánh sáng. Cấp 2 có thêm vòng sáng quanh đèn."""
     pg.draw.circle(s, '#496451', (26, 30), 18)
     pg.draw.polygon(s, '#b6c8bc', [(17, 43), (21, 14), (31, 14), (36, 43)])
     pg.draw.rect(s, '#718e87', (23, 18, 6, 24), border_radius=2)
@@ -142,7 +117,6 @@ def draw_tower(s, art, level, variant):
 
 
 def draw_city(s, art, level, variant):
-    """Thành phố: 3 toà nhà có cửa sổ. Thành phố nghiên cứu có ăng-ten, thành phố phép thuật có quả cầu tím."""
     if art == 'magiccity':
         roof = '#a690c1'
     else:
@@ -161,7 +135,6 @@ def draw_city(s, art, level, variant):
 
 
 def draw_village(s, art, level, variant):
-    """Làng: 2 ngôi nhà, cấp 2 thêm nhà thứ 3. Làng phép thuật mái tím và có ngọn đèn phép."""
     magic = (art == 'magicvillage')
     if magic:
         roof = '#ac91c0'
@@ -195,10 +168,6 @@ ART = {
 
 
 def tile_art(art, level=1, size=48, variant=0, dark=False):
-    """Trả về ảnh (pg.Surface) của 1 ô đất.
-    art     = KINDS[kind].art           level = KINDS[kind].level (rừng non là cấp 0)
-    size    = cỡ ảnh trả về (pixel)      variant (0..2) làm mỗi ô hơi khác nhau cho đỡ đơn điệu
-    dark    = True: vẽ ô đã bị bóng tối chiếm"""
     s = pg.Surface((BASE, BASE), pg.SRCALPHA)         # tấm ảnh trong suốt 52x52 để vẽ lên
 
     if dark:
@@ -216,7 +185,7 @@ def tile_art(art, level=1, size=48, variant=0, dark=False):
         base = pg.Color(ground)
         color = (base.r + shift, base.g + shift, base.b + shift)    # màu nền đều đủ lớn nên không bị tràn 0..255
         pg.draw.rect(s, color, (0, 0, BASE, BASE), border_radius=6)
-        for x, y in [(7, 8), (39, 41), (11, 43), (44, 7)]:          # vài chấm cỏ nhỏ
+        for x, y in [(7, 8), (39, 41), (11, 43), (44, 7)]:        
             pg.draw.circle(s, '#405e4b', (x, y), 1)
         if draw is not None:
             draw(s, art, level, variant)
