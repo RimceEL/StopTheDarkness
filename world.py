@@ -1,12 +1,3 @@
-"""world.py - dữ liệu bản đồ và toàn bộ LUẬT CHƠI.
-
-File này không vẽ gì cả, chỉ chứa:
-  1. KINDS    : danh sách các loại ô (rừng, mỏ đá, làng...) và số liệu của chúng
-  2. UPGRADES : mỗi loại ô được nâng cấp lên loại nào, với điều kiện gì
-  3. World    : bản đồ + tài nguyên + bóng tối + thắng/thua
-
-Cùng một seed luôn ra cùng một bản đồ.
-"""
 import random
 
 N = 12                                            # bản đồ N x N ô
@@ -15,22 +6,20 @@ ZERO = (0, 0, 0, 0)                               # 4 số luôn theo thứ tự
 DARK_SECONDS = 6.25                               # bóng tối chiếm 1 ô mất bấy nhiêu giây (khi chưa có tháp)
 
 
-# =====================================================================
-#  1. CÁC LOẠI Ô
-# =====================================================================
+
 class Kind:
     """Thông tin của một loại ô. Class này chỉ để chứa dữ liệu, không có logic."""
 
     def __init__(self, name, level, art, cost=ZERO, production=ZERO, boost=ZERO, tags=None, description=''):
-        self.name = name              # tên hiển thị
-        self.level = level            # cấp độ (rừng non là cấp 0)
+        self.name = name             
+        self.level = level          
         self.art = art                # tên kiểu hình ảnh, dùng cho tile_art() trong assets.py
-        self.cost = cost              # chi phí để nâng cấp LÊN loại ô này
+        self.cost = cost             
         self.production = production  # tài nguyên tự sản xuất mỗi phút
         self.boost = boost            # cộng hưởng cho 4 ô kề bên (0.25 = +25% sản lượng của ô kề)
         if tags is None:
             tags = {}
-        self.tags = tags              # các "nhãn" của ô, xem giải thích ngay bên dưới
+        self.tags = tags              
         self.description = description
 
 
@@ -51,7 +40,6 @@ KINDS = {
     'grass': Kind('Đồng cỏ', 1, 'grass', description='Đất trống. Ô kề bên quyết định công trình có thể xây.'),
     'water': Kind('Mặt hồ', 1, 'water', tags={'finished': 1}, description='Mặt hồ. Ô kề hồ được tính là ô đã nâng cấp tối đa.'),
 
-    # --- rừng: cấp 2 trở lên mới sản xuất gỗ ---
     'sapling': Kind('Rừng non', 0, 'forest', cost=(1, 0, 0, 0), tags={'forest': 0}),
     'forest1': Kind('Rừng', 1, 'forest', cost=(2, 0, 0, 0), boost=(.25, 0, 0, 0), tags={'forest': 1},
                     description='Cung cấp gỗ cho các công trình ở gần.'),
@@ -60,7 +48,6 @@ KINDS = {
     'forest4': Kind('Rừng', 4, 'forest', cost=(8, 5, 0, 0), production=(10, 0, 0, 0), boost=(.5, 0, 0, 0),
                     tags={'forest': 4, 'finished': 1}),
 
-    # --- rừng nấm và mỏ đá ---
     'mushroom1': Kind('Rừng nấm', 1, 'mushroom', tags={'mushroom': 1},
                       description='Nguồn phép thuật đầu tiên. Nền tảng của đường phép thuật.'),
     'mushroom2': Kind('Rừng nấm', 2, 'mushroom', cost=(6, 0, 0, 0), production=(1, 0, 2, 0),
@@ -71,7 +58,6 @@ KINDS = {
     'rock4': Kind('Mỏ đá', 4, 'rock', cost=(12, 10, 0, 2), production=(0, 10, 0, 0), boost=(0, .25, 0, 0),
                   tags={'rock': 4, 'finished': 1}),
 
-    # --- làng và thành phố thường ---
     'village1': Kind('Làng', 1, 'village', cost=(5, 0, 0, 0), boost=(.25, .25, 0, 0), tags={'village': 1}),
     'village2': Kind('Làng', 2, 'village', cost=(10, 4, 0, 0), boost=(.5, .5, 0, 0), tags={'village': 2, 'finished': 1}),
     'city1': Kind('Thành phố', 1, 'city', cost=(5, 30, 0, 0), production=(0, 0, 0, 2), boost=(.5, .5, 0, 0),
@@ -79,7 +65,6 @@ KINDS = {
     'city2': Kind('Thành phố', 2, 'city', cost=(10, 100, 0, 10), production=(0, 0, 0, 5), boost=(.5, .5, 0, .25),
                   tags={'village': 4, 'finished': 1}),
 
-    # --- đường CÔNG NGHỆ: làng khai mỏ -> thành phố nghiên cứu mỏ -> thành phố nghiên cứu ánh sáng (thắng) ---
     'mining1': Kind('Làng khai mỏ', 1, 'mining', cost=(5, 2, 0, 0), production=(0, 2, 0, 0), boost=(0, .5, 0, 0),
                     tags={'village': 1}),
     'mining2': Kind('Làng khai mỏ', 2, 'mining', cost=(10, 5, 0, 0), production=(0, 5, 0, 0), boost=(0, 1, 0, 0),
@@ -90,7 +75,6 @@ KINDS = {
                      boost=(0, 2, 0, .5), tags={'village': 4, 'finished': 1, 'win': 1},
                      description='Chiến thắng bằng công nghệ: chặn bóng tối vĩnh viễn.'),
 
-    # --- đường PHÉP THUẬT: làng phép thuật -> (tháp ánh sáng) -> làng cấp 2 -> vòng đá ánh sáng (thắng) ---
     'magic1': Kind('Làng phép thuật', 1, 'magicvillage', cost=(5, 0, 1, 0), production=(0, 0, 2, 0),
                    boost=(.25, 0, .25, 0), tags={'village': 1, 'magicvillage': 1}),
     'magic2': Kind('Làng phép thuật', 2, 'magicvillage', cost=(14, 2, 5, 0), production=(0, 0, 5, 0),
@@ -111,14 +95,12 @@ KINDS = {
 }
 
 
-# =====================================================================
-#  2. LUẬT NÂNG CẤP
-# =====================================================================
+
 class Upgrade:
     """Một cách nâng cấp: ô hiện tại -> `target`, nếu thoả hết điều kiện."""
 
     def __init__(self, target, needs=None, unique='', exists='', hint=''):
-        self.target = target          # tên loại ô sau khi nâng cấp (khoá trong KINDS)
+        self.target = target          
         if needs is None:
             needs = []
         self.needs = needs            # danh sách (nhãn, cấp tối thiểu, số ô kề). Phải thoả TẤT CẢ.
@@ -128,8 +110,6 @@ class Upgrade:
         self.hint = hint              # câu giải thích điều kiện, hiện cho người chơi khi chưa đủ điều kiện
 
 
-# Mỗi loại ô có một DANH SÁCH cách nâng cấp. Game duyệt từ trên xuống và lấy cách ĐẦU TIÊN thoả điều kiện.
-# Nếu cùng một đích xuất hiện 2 lần (vd 'city1') nghĩa là có 2 cách khác nhau để lên đó (điều kiện HOẶC).
 UPGRADES = {
     'grass': [
         Upgrade('light1', needs=[('magicvillage', 0, 1)], unique='light',
@@ -137,7 +117,7 @@ UPGRADES = {
         Upgrade('mining1', needs=[('rock', 0, 2)], hint='Làng khai mỏ: kề ít nhất 2 mỏ đá.'),
         Upgrade('magic1', needs=[('mushroom', 0, 1)], hint='Làng phép thuật: kề rừng nấm.'),
         Upgrade('sapling', needs=[('forest', 0, 3), ('village', 0, 1)], hint='Rừng non: kề 3 rừng và 1 làng.'),
-        Upgrade('village1'),                      # không điều kiện: đồng cỏ nào cũng xây được làng
+        Upgrade('village1'),                      
     ],
     'sapling': [Upgrade('forest1')],
     'forest1': [Upgrade('forest2')],
@@ -167,7 +147,7 @@ UPGRADES = {
                         hint='Cần có ít nhất 1 làng phép thuật cấp 2 trên bản đồ.')],
 }
 
-# Hai vùng khởi đầu cố định (x, y, loại): bên trái cho đường phép thuật, bên phải cho đường công nghệ.
+
 START_ZONES = [
     (3, 3, 'mushroom1'), (4, 3, 'grass'), (5, 3, 'grass'), (4, 2, 'grass'), (3, 4, 'grass'),
     (3, 2, 'grass'), (4, 4, 'grass'), (3, 5, 'forest1'), (2, 5, 'forest1'), (4, 5, 'forest1'),
@@ -179,9 +159,7 @@ START_ZONES = [
 ]
 
 
-# =====================================================================
-#  3. ĐƯỜNG ĐI CỦA BÓNG TỐI
-# =====================================================================
+
 def make_spiral():
     """Trả về danh sách chỉ số ô theo thứ tự bóng tối chiếm: xoắn ốc từ góc dưới trái vào tâm.
 
@@ -189,8 +167,8 @@ def make_spiral():
     Thứ tự hướng: phải -> lên -> trái -> xuống -> phải ... cho tới khi đi hết N x N ô."""
     path = []
     visited = set()
-    x, y = 0, N - 1                    # góc dưới trái
-    dx, dy = 1, 0                      # hướng đi hiện tại: sang phải
+    x, y = 0, N - 1                    
+    dx, dy = 1, 0                      
     for step in range(N * N):
         i = y * N + x
         path.append(i)
@@ -201,7 +179,7 @@ def make_spiral():
         next_y = y + dy
         out_of_map = next_x < 0 or next_x >= N or next_y < 0 or next_y >= N
         if out_of_map or (next_y * N + next_x) in visited:
-            old_dx = dx                # rẽ trái: (phải -> lên -> trái -> xuống)
+            old_dx = dx                
             dx = dy
             dy = -old_dx
         x = x + dx
@@ -209,25 +187,21 @@ def make_spiral():
     return path
 
 
-SPIRAL = make_spiral()                 # tính một lần, dùng suốt game
+SPIRAL = make_spiral()                 
 
-
-# =====================================================================
-#  4. THẾ GIỚI
-# =====================================================================
 class World:
     def __init__(self, seed=None):
         if seed is None:
             seed = random.randrange(100000, 999999)
         self.seed = seed
-        self.tiles = ['grass'] * (N * N)      # tiles[i] = tên loại ô; i = y * N + x
-        self.resources = [12., 0., 0., 0.]    # gỗ, đá, phép thuật, công nghệ
+        self.tiles = ['grass'] * (N * N)      
+        self.resources = [12., 0., 0., 0.]   
         self.built = {}                       # đã xây bao nhiêu ô mỗi loại: {'village1': 2, ...} (để tính giá)
         self.dark = set()                     # chỉ số các ô đã bị bóng tối chiếm
         self.next_dark = SPIRAL[0]            # ô bóng tối sẽ chiếm tiếp theo
         self.dark_timer = .5                  # còn bao nhiêu giây nữa bóng tối chiếm ô kế tiếp
-        self.won = ''                         # '' = chưa thắng, hoặc 'Phép thuật' / 'Công nghệ'
-        self.lost = False                     # True khi bóng tối phủ kín bản đồ
+        self.won = ''                        
+        self.lost = False                    
         self.generate()
 
     @staticmethod
@@ -249,11 +223,11 @@ class World:
         bag = (['forest1'] * rng.randint(35, 39) + ['rock1'] * rng.randint(12, 13)
                + ['mushroom1'] * 4 + ['water'] * 29)
         spots = list(range(N * N))
-        rng.shuffle(spots)                    # xáo trộn thứ tự các ô
-        for n in range(len(bag)):             # ô thứ n trong spots nhận loại thứ n trong bag
+        rng.shuffle(spots)                   
+        for n in range(len(bag)):            
             self.tiles[spots[n]] = bag[n]
 
-        # 2. Vòng đá nằm ngay giữa bản đồ (ô 5 hoặc 6).
+        # 2. Vòng đá nằm ngay giữa bản đồ.
         circle = rng.choice((5, 6)) * N + rng.choice((5, 6))
         self.tiles[circle] = 'circle1'
 
@@ -262,7 +236,7 @@ class World:
             if y * N + x != circle:
                 self.tiles[y * N + x] = kind
 
-    # ---------- hỏi thông tin về bản đồ ----------
+    # các hfm hỏi thông tin về bản đồ 
     def tag(self, i, name):
         """Giá trị nhãn `name` của ô i, hoặc -1 nếu ô không có nhãn đó.
         Ô đã bị bóng tối chiếm coi như không có nhãn nào."""
@@ -288,23 +262,22 @@ class World:
                 return True
         return False
 
-    # ---------- nâng cấp ----------
     def satisfies(self, i, u):
         """Ô i có thoả điều kiện của cách nâng cấp `u` không?"""
         if i in self.dark:
             return False
-        for name, level, amount in u.needs:               # mỗi điều kiện: kề đủ `amount` ô nhãn `name`
+        for name, level, amount in u.needs:               
             if self.count(i, name, level) < amount:
                 return False
-        if u.unique != '' and self.exists(u.unique):      # loại "chỉ có 1" mà đã có rồi
+        if u.unique != '' and self.exists(u.unique):      
             return False
-        if u.exists != '' and not self.exists(u.exists):  # cần có thứ gì đó trên bản đồ mà chưa có
+        if u.exists != '' and not self.exists(u.exists):  
             return False
         return True
 
     def upgrade_for(self, i):
         """Cách nâng cấp đang khả dụng của ô i (thoả điều kiện, chưa tính tiền). Không có thì trả về None."""
-        if self.tiles[i] not in UPGRADES:                 # ô này không có nâng cấp nào (vd hồ, đã tối đa)
+        if self.tiles[i] not in UPGRADES:                 
             return None
         for u in UPGRADES[self.tiles[i]]:
             if self.satisfies(i, u):
@@ -319,7 +292,7 @@ class World:
         factor = 1 + 0.5 * times
         result = []
         for base in KINDS[kind].cost:
-            result.append(int(base * factor))             # int() làm tròn xuống
+            result.append(int(base * factor))            
         return result
 
     def can_afford(self, kind):
@@ -349,24 +322,24 @@ class World:
         else:
             self.built[u.target] = 1
 
-        if 'win' in KINDS[u.target].tags:                 # xây được ô chiến thắng
+        if 'win' in KINDS[u.target].tags:                
             if u.target == 'circle2':
                 self.won = 'Phép thuật'
             else:
                 self.won = 'Công nghệ'
         return KINDS[u.target].name + ' đã sẵn sàng.'
 
-    # ---------- sản xuất ----------
+    # sản xuất
     def tile_production(self, i):
         """Sản lượng mỗi phút của ô i = sản xuất gốc x (1 + tổng cộng hưởng từ các ô kề bên)."""
         result = [0, 0, 0, 0]
-        if i in self.dark:                                # ô tối không sản xuất
+        if i in self.dark:                              
             return result
         kind = KINDS[self.tiles[i]]
-        for r in range(4):                                # r = 0 gỗ, 1 đá, 2 phép thuật, 3 công nghệ
+        for r in range(4):                                
             boost = 0
             for j in self.neighbours(i):
-                if j not in self.dark:                    # ô kề bị tối thì không còn cộng hưởng
+                if j not in self.dark:                   
                     boost += KINDS[self.tiles[j]].boost[r]
             result[r] = kind.production[r] * (1 + boost)
         return result
@@ -380,7 +353,7 @@ class World:
                 total[r] += production[r]
         return total
 
-    # ---------- bóng tối ----------
+    #bóng tối 
     def dark_interval(self):
         """Số giây để bóng tối chiếm 1 ô. Mỗi tháp ánh sáng làm khoảng thời gian này dài ra."""
         slow = 0
@@ -392,7 +365,7 @@ class World:
     def spread(self):
         """Bóng tối chiếm ô next_dark rồi chuyển sang ô kế tiếp trên đường xoắn ốc."""
         self.dark.add(self.next_dark)
-        if len(self.dark) == N * N:                       # đã phủ kín bản đồ -> thua
+        if len(self.dark) == N * N:                     
             self.lost = True
         else:
             self.next_dark = SPIRAL[len(self.dark)]
@@ -405,7 +378,7 @@ class World:
         rates = self.rates()
         for r in range(4):
             self.resources[r] += rates[r] * dt / 60       # rates tính theo phút nên chia 60
-        if self.won == '':                                # thắng rồi thì bóng tối dừng vĩnh viễn
+        if self.won == '':                               
             self.dark_timer -= dt
             if self.dark_timer <= 0:
                 self.spread()
